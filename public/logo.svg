@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Skłosz">
+  <g transform="rotate(-40 32 32)">
+    <rect x="29.5" y="36" width="5" height="24" rx="2" fill="#1b1f24"/>
+    <ellipse cx="32" cy="20" rx="13" ry="17" fill="none" stroke="#1b1f24" stroke-width="3.5"/>
+    <g stroke="#1b1f24" stroke-width="1" opacity=".55">
+      <path d="M25 5v30M32 3v34M39 5v30M20 12h24M19 20h26M20 28h24"/>
+    </g>
+  </g>
+  <circle cx="45" cy="45" r="11" fill="#1b1f24"/>
+  <circle cx="41.5" cy="41" r="2.3" fill="#f5c400"/>
+  <circle cx="47" cy="40" r="2.3" fill="#f5c400"/>
+</svg>

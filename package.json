@@ -1,0 +1,32 @@
+{
+  "name": "sklosz",
+  "version": "1.0.0",
+  "description": "Skłosz: taktyczna gra w squasha",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wiksas/strona06.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/wiksas/strona06/issues"
+  },
+  "homepage": "https://github.com/wiksas/strona06#readme",
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "private": true
+}
