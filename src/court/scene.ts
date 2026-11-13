@@ -14,7 +14,7 @@ const LINE = '#c8102e';
 const COLORS: Record<Side, string> = { player: '#1f5fa8', cpu: '#2b2d31' };
 export const VIEWS = {
   back: { pos: [W / 2, 3.6, L + 4.6], target: [W / 2, 1.3, L * 0.45] },
-  top: { pos: [W / 2, 14, L / 2 + 0.01], target: [W / 2, 0, L / 2] },
+  top: { pos: [W / 2, 16, L / 2 + 0.01], target: [W / 2, 0, L / 2] },
   side: { pos: [W + 6.5, 4, L * 0.55], target: [W / 2, 1.2, L * 0.5] },
 } as const;
 
@@ -76,7 +76,7 @@ export class CourtView {
     this.controls.enableDamping = true;
     this.controls.maxPolarAngle = Math.PI * 0.49;
     this.controls.minDistance = 4;
-    this.controls.maxDistance = 22;
+    this.controls.maxDistance = 24;
     this.controls.enablePan = false;
     this.setView('back');
 
