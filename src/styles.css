@@ -1,0 +1,225 @@
+/*
+  Palette: club hall. Paper #efe9df and maple come from the court itself, ink #1b1f24 for text,
+  player blue #1f5fa8 matches the player's shirt, ball-dot yellow #f5c400 is the single accent
+  (primary action and the aim circle). Barlow Condensed for scoreboard numerals, Barlow for text.
+*/
+:root {
+  --paper: #efe9df;
+  --surface: #fbf8f3;
+  --ink: #1b1f24;
+  --muted: #555b63;
+  --line: #d6cdbd;
+  --blue: #1f5fa8;
+  --accent: #f5c400;
+  --court-red: #c8102e;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --gap: clamp(0.5rem, 1.5vw, 1rem);
+  font-family: 'Barlow', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.45;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { display: flex; flex-direction: column; min-height: 100dvh; }
+
+button, a[href], input[type='radio'], input[type='range'], label:has(input) { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+button:hover { background: #fff; border-color: var(--blue); }
+button:active { transform: translateY(1px); background: #ece4d6; }
+button.primary { background: var(--accent); border-color: var(--ink); }
+button.primary:hover { background: #ffd31f; }
+button[aria-pressed='true'] { background: var(--ink); color: var(--surface); }
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0.5rem clamp(0.75rem, 2vw, 1.5rem);
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  min-height: 44px;
+}
+.board {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-inline: auto;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.board-side { display: flex; align-items: center; gap: 0.5rem; }
+.board-side .who { font-weight: 600; font-size: 1.05rem; }
+.board-side[data-serving] .who::after {
+  content: ' serw.';
+  font-weight: 600;
+  color: var(--blue);
+}
+.board-side[data-side='cpu'][data-serving] .who::after { content: none; }
+.board-side[data-side='cpu'][data-serving] .who::before { content: 'serw. '; color: var(--blue); }
+.pts { font-size: 2.1rem; font-weight: 700; min-width: 2ch; text-align: center; line-height: 1; }
+.games {
+  font-size: 1rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-sm);
+  min-width: 1.7rem;
+  text-align: center;
+}
+.board-sep { font-size: 1.6rem; font-weight: 700; }
+.top-actions { display: flex; gap: 0.5rem; }
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  min-height: 0;
+}
+.court-wrap { position: relative; min-height: 0; min-width: 0; }
+.court { position: absolute; inset: 0; }
+.court canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.court-status {
+  position: absolute;
+  inset: 40% 1rem auto;
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+.court-status.error { color: var(--court-red); }
+.view-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.35rem;
+  max-width: calc(100% - 1rem);
+}
+.view-bar button { background: rgb(251 248 243 / 0.92); padding-inline: 0.7rem; white-space: nowrap; }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem clamp(0.9rem, 2vw, 1.4rem);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+}
+.level-row { display: flex; justify-content: space-between; font-size: 0.95rem; }
+.level strong { font-family: 'Barlow Condensed', sans-serif; font-size: 1.25rem; }
+progress {
+  width: 100%;
+  height: 8px;
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  background: #e2d9c9;
+  overflow: hidden;
+}
+progress::-webkit-progress-bar { background: #e2d9c9; }
+progress::-webkit-progress-value { background: var(--blue); }
+progress::-moz-progress-bar { background: var(--blue); }
+.note { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--court-red); }
+
+.phase {
+  margin: 0.4rem 0 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  line-height: 1.05;
+}
+.hint { margin: 0; color: var(--muted); }
+.controls { display: flex; flex-direction: column; gap: 0.75rem; }
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.row button { flex: 1 1 8rem; }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.4rem; }
+.power { display: grid; gap: 0.2rem; font-weight: 600; }
+.power input { width: 100%; height: 44px; accent-color: var(--blue); }
+.power .scale { display: flex; justify-content: space-between; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+.info { display: flex; gap: 1.2rem; margin: 0; }
+.info dt { font-size: 0.85rem; color: var(--muted); }
+.info dd { margin: 0; font-weight: 600; }
+.warning { margin: 0; color: var(--court-red); font-weight: 600; }
+.log { margin: auto 0 0; padding-left: 1.2rem; font-size: 0.95rem; color: var(--muted); }
+.log li + li { margin-top: 0.15rem; }
+
+dialog {
+  width: min(34rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 2rem);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 1.25rem;
+  /* The only elevated surface: it sits above the live court. */
+  box-shadow: 0 18px 50px rgb(27 31 36 / 0.25);
+}
+dialog::backdrop { background: rgb(27 31 36 / 0.45); }
+dialog h2 { margin: 0 0 0.75rem; font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; }
+dialog h3 { margin: 1rem 0 0.25rem; font-size: 1.05rem; }
+dialog ul { margin: 0; padding-left: 1.2rem; }
+fieldset { border: 1px solid var(--line); border-radius: var(--r-sm); margin: 0 0 0.9rem; padding: 0.5rem 0.8rem; }
+legend { font-weight: 600; padding-inline: 0.3rem; }
+fieldset label { display: flex; align-items: center; gap: 0.6rem; min-height: 44px; }
+input[type='radio'] { width: 1.15rem; height: 1.15rem; accent-color: var(--blue); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+
+/* Tablet and narrow laptop: slimmer side panel, smaller scoreboard. */
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 300px; }
+  .pts { font-size: 1.8rem; }
+}
+
+/* Phone and portrait tablet: court on top, decision panel below. */
+@media (max-width: 760px) {
+  .top { flex-wrap: wrap; row-gap: 0.25rem; }
+  .brand { font-size: 1.3rem; }
+  .brand img { width: 30px; height: 30px; }
+  .board { order: 3; width: 100%; justify-content: center; }
+  .top-actions { margin-left: auto; }
+  .top-actions button { padding-inline: 0.7rem; }
+  .layout { grid-template-columns: 1fr; grid-template-rows: 52dvh auto; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; gap: 0.7rem; }
+  .view-bar { bottom: 0.4rem; gap: 0.25rem; }
+  .view-bar button { padding-inline: 0.5rem; font-size: 0.9rem; }
+  .shots { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Phone in landscape: height is scarce, keep court and panel side by side. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(260px, 40vw); grid-template-rows: none; }
+  .panel { border-top: 0; border-left: 1px solid var(--line); overflow-y: auto; }
+  .board { order: 0; width: auto; }
+  .top { flex-wrap: nowrap; padding-block: 0.25rem; }
+  .pts { font-size: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:active { transform: none; }
+}

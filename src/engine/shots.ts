@@ -77,7 +77,7 @@ function velocityTowards(from: Vec3, to: Vec3, speed: number): Vec3 {
 /** Aim spread (1 sigma, metres on the wall) and power spread for a skill level 1..10. */
 export function accuracy(level: number): { aim: number; power: number } {
   const l = Math.min(Math.max(level, 1), 10) - 1;
-  return { aim: 0.42 * Math.pow(0.81, l), power: 0.12 * Math.pow(0.8, l) };
+  return { aim: 0.26 * Math.pow(0.82, l), power: 0.07 * Math.pow(0.8, l) };
 }
 
 /** Pressure 0 (set, balanced) .. 1 (stretched) widens the spread up to 2.2x. */

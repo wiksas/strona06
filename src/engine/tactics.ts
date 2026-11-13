@@ -38,19 +38,19 @@ export function presetShot(kind: ShotKind, from: Vec2): ShotInput {
     case 'cross':
       return { target: front(mirrorAim(from, far, 7.2), 1.45), power: 0.7 };
     case 'drop':
-      return { target: front(near + inward * 0.4, 0.72), power: 0.1 };
+      return { target: front(near + inward * 0.4, 0.82), power: 0.1 };
     case 'crossDrop':
-      return { target: front(far - inward * 0.6, 0.75), power: 0.16 };
+      return { target: front(far - inward * 0.6, 0.85), power: 0.16 };
     case 'boast':
       return {
-        target: { surface: leftHalf ? 'left' : 'right', u: Math.max(from.z * 0.5, 1.2), v: 0.95 },
+        target: { surface: leftHalf ? 'left' : 'right', u: Math.max(from.z * 0.5, 1.2), v: 1.05 },
         power: 0.6,
       };
     case 'lob':
-      return { target: front(mirrorAim(from, far - inward * 0.8, 8.6), 3.6), power: 0.22 };
+      return { target: front(mirrorAim(from, far - inward * 0.8, 8.6), 3.4), power: 0.19 };
     case 'serveLob':
-      return { target: front(mirrorAim(from, far - inward * 1.4, 8.6), 3.4), power: 0.2 };
+      return { target: front(mirrorAim(from, far - inward * 1.4, 8.6), 3.3), power: 0.24 };
     case 'serveHard':
-      return { target: front(mirrorAim(from, far - inward * 1.2, 7.4), 2.3), power: 0.28 };
+      return { target: front(mirrorAim(from, far - inward * 1.2, 7.4), 2.5), power: 0.28 };
   }
 }
