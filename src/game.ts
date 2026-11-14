@@ -4,14 +4,24 @@ import type { CourtView } from './court/scene';
 import { DIFFICULTIES, cpuDecide, cpuPickBox, type Difficulty } from './engine/ai';
 import { SAMPLE_DT, sampleAt } from './engine/physics';
 import { XP, addXp, xpToNext } from './engine/progress';
-import { REACTION, checkShot, positionAt, type Move, type Vec2 } from './engine/rally';
+import { CLEAR_TIME, blocking, clearDuration, clearSpot, type Blocking } from './engine/clearance';
+import { REACTION, checkShot, positionAt, type Intercept, type Move, type Vec2 } from './engine/rally';
 import { awardRally, newMatch, other, startNextGame, type Box, type MatchState, type Side } from './engine/rules';
 import { accuracy, flightFor, pressureFactor, type ShotInput } from './engine/shots';
 import { RALLY_SHOTS, SERVE_SHOTS, SHOT_LABEL, presetShot, type ShotKind } from './engine/tactics';
 import { playShot, receiveStand, serveContact, serveStand, type ShotOutcome, type Striker } from './engine/turn';
 import { CPU_OUTFIT, saveProfiles, type Profile } from './profiles';
 
-type Phase = 'idle' | 'box' | 'aim' | 'move' | 'cpu' | 'anim' | 'point';
+type Phase = 'idle' | 'box' | 'aim' | 'move' | 'clear' | 'cpu' | 'anim' | 'point';
+
+/** Rally paused because the previous striker stands in the way of the player about to hit. */
+interface PendingClear {
+  o: ShotOutcome;
+  ic: Intercept;
+  side: Side;
+  from: Vec2;
+  block: Blocking;
+}
 export type Mode = 'cpu' | 'hotseat';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -36,6 +46,7 @@ export class Game {
   private shot: ShotInput | null = null;
   private shotKind: ShotKind | null = null;
   private moveTo: Vec2 = { ...T_POSITION };
+  private pending: PendingClear | null = null;
   private rand = Math.random;
   private controls = $('controls');
 
@@ -67,6 +78,9 @@ export class Game {
 
   start(mode: Mode, gamesToWin: number, difficultyId: string): void {
     this.view.setFrameHandler(null);
+    this.pending = null;
+    this.view.showZone(null);
+    this.view.showMove(null);
     this.mode = mode;
     this.difficulty = DIFFICULTIES.find((d) => d.id === difficultyId) ?? DIFFICULTIES[1];
     const first: Side = this.rand() < 0.5 ? 'p1' : 'p2';
@@ -129,6 +143,7 @@ export class Game {
     this.striker = { side: m.server, contact: serveContact(box), stand: serveStand(box), level: this.levelOf(m.server), pressure: 0 };
     this.receiverMove = still(receiveStand(box));
     this.serveBox = box;
+    this.view.showZone(null);
     this.view.setPlayer(m.server, this.striker.stand, null, 0);
     this.view.setPlayer(other(m.server), this.receiverMove.from, null, 0);
     this.view.setBall(this.striker.contact);
@@ -233,46 +248,136 @@ export class Game {
   private resolve(o: ShotOutcome): void {
     const r = o.result;
     if (r.kind === 'continue') {
-      const side = other(o.striker);
       const ic = r.intercept;
-      this.receiverMove = { from: positionAt(o.strikerMove, ic.t), to: o.strikerMove.to, delay: 0 };
-      this.striker = { side, contact: ic.ball, stand: ic.stand, level: this.levelOf(side), pressure: ic.pressure };
-      this.serveBox = undefined;
-      if (this.isHuman(side)) this.log(`${this.nameOf(side)} dobiega: ${pressureLabel(ic.pressure)}.`);
-      this.nextDecision();
+      const from = positionAt(o.strikerMove, ic.t);
+      const block = blocking(from, ic);
+      if (!block) {
+        this.continueRally(o, ic, { from, to: o.strikerMove.to, delay: 0 });
+        return;
+      }
+      this.pending = { o, ic, side: o.striker, from, block };
+      if (this.isHuman(o.striker)) this.enterClear();
+      else this.cpuClear();
       return;
     }
+    if (r.kind === 'let') this.showLet(r.reason);
+    else this.finishRally(r.winner, r.reason, o.striker === r.winner && r.reason.startsWith('Rywal nie dobiegł'));
+  }
+
+  private continueRally(o: ShotOutcome, ic: Intercept, prevStrikerMove: Move): void {
+    const side = other(o.striker);
+    this.receiverMove = prevStrikerMove;
+    this.striker = { side, contact: ic.ball, stand: ic.stand, level: this.levelOf(side), pressure: ic.pressure };
+    this.serveBox = undefined;
+    if (this.isHuman(side)) this.log(`${this.nameOf(side)} dobiega: ${pressureLabel(ic.pressure)}.`);
+    this.nextDecision();
+  }
+
+  private enterClear(): void {
+    const p = this.pending!;
+    const opp = this.nameOf(other(p.side));
+    this.phase = 'clear';
+    this.setTurn(p.side);
+    this.moveTo = clearSpot(p.from, p.ic);
+    this.view.showZone(p.ic.stand, p.ic.ball);
+    this.view.showMove(this.moveTo, this.outfitOf(p.side).shirt);
+    const why = p.block === 'swing'
+      ? `${opp} dobiegł do piłki, a Ty stoisz w polu jego zamachu.`
+      : `Zasłaniasz rywalowi (${opp}) prostą linię od piłki do ściany frontowej.`;
+    this.setPhase('Zejdź z drogi rywalowi', `${why} Stuknij podłogę poza czerwoną strefą. Krótkie zejście: gra toczy się dalej. Za długie: let. Zostanie: stroke dla rywala.`);
+    this.renderControls();
+    this.syncClearButton();
+  }
+
+  private syncClearButton(): void {
+    const p = this.pending!;
+    const blocked = blocking(this.moveTo, p.ic);
+    const late = clearDuration(p.from, this.moveTo) > CLEAR_TIME;
+    const go = document.getElementById('clear-go') as HTMLButtonElement | null;
+    const note = document.getElementById('clear-note');
+    if (go) go.disabled = !!blocked;
+    if (note) {
+      note.textContent = blocked ? 'To miejsce nadal blokuje rywala.' : late ? 'Daleko: nie zdążysz przed zamachem, będzie let.' : 'Zdążysz zejść, wymiana trwa dalej.';
+      note.className = blocked || late ? 'warning' : 'hint';
+    }
+  }
+
+  /** The CPU clears unless it slips, which is more likely for weaker opponents. */
+  private cpuClear(): void {
+    const p = this.pending!;
+    if (this.rand() < this.difficulty.clearFail) {
+      this.pending = null;
+      this.finishRally(other(p.side), 'Stroke: CPU nie zszedł z drogi', false);
+      return;
+    }
+    this.runClear(clearSpot(p.from, p.ic));
+  }
+
+  private runClear(to: Vec2): void {
+    const p = this.pending!;
+    this.pending = null;
+    this.phase = 'anim';
+    this.setTurn(null);
+    this.view.showMove(null);
+    this.renderControls();
+    const move: Move = { from: p.from, to, delay: REACTION };
+    const duration = clearDuration(p.from, to);
+    const speed = reducedMotion.matches ? 3 : 1;
+    const start = performance.now();
+    let prev = 0;
+    this.view.setFrameHandler((now) => {
+      const t = Math.min(((now - start) / 1000) * speed, duration);
+      this.view.setPlayer(p.side, positionAt(move, t), p.ic.ball, t - prev);
+      prev = t;
+      if (t < duration) return;
+      this.view.setFrameHandler(null);
+      this.view.showZone(null);
+      if (duration > CLEAR_TIME) {
+        this.showLet(`Let: ${this.nameOf(p.side)} zszedł z drogi, ale za późno`);
+      } else {
+        this.log(`${this.nameOf(p.side)} schodzi z drogi.`);
+        this.continueRally(p.o, p.ic, still(to));
+      }
+    });
+  }
+
+  private showLet(reason: string): void {
     this.phase = 'point';
-    if (r.kind === 'let') {
-      this.log(r.reason);
-      this.setPhase('Let', r.reason);
-      this.renderControls(() => [this.button('Powtórz wymianę', () => this.setupServe(), true)]);
-      return;
-    }
-    const m = awardRally(this.match!, r.winner);
+    this.setTurn(null);
+    this.log(reason);
+    this.setPhase('Let', `${reason}. Wymiana zostanie powtórzona.`);
+    this.renderControls(() => [this.button('Powtórz wymianę', () => this.setupServe(), true)]);
+  }
+
+  private finishRally(winner: Side, reason: string, outright: boolean): void {
+    this.phase = 'point';
+    this.setTurn(null);
+    this.view.showZone(null);
+    this.view.showMove(null);
+    const m = awardRally(this.match!, winner);
     this.match = m;
-    this.log(r.reason);
-    if (this.isHuman(r.winner)) this.grantXp(r.winner, o, m);
+    this.log(reason);
+    if (this.isHuman(winner)) this.grantXp(winner, outright, m);
     this.renderBoard();
-    const winnerName = this.nameOf(r.winner);
     if (m.matchWinner) {
-      this.setPhase(`Mecz dla: ${this.nameOf(m.matchWinner)}`, `${r.reason}. Gemy ${m.games.p1}:${m.games.p2}.`);
+      this.setPhase(`Mecz dla: ${this.nameOf(m.matchWinner)}`, `${reason}. Gemy ${m.games.p1}:${m.games.p2}.`);
       this.renderControls(() => [this.button('Zagraj kolejny mecz', () => ($('menu') as HTMLDialogElement).showModal(), true)]);
     } else if (m.gameWinner) {
-      this.setPhase(`Gem dla: ${this.nameOf(m.gameWinner)} (${m.score.p1}:${m.score.p2})`, `${r.reason}. Gemy ${m.games.p1}:${m.games.p2}.`);
+      this.setPhase(`Gem dla: ${this.nameOf(m.gameWinner)} (${m.score.p1}:${m.score.p2})`, `${reason}. Gemy ${m.games.p1}:${m.games.p2}.`);
       this.renderControls(() => [this.button('Następny gem', () => {
         this.match = startNextGame(this.match!);
         this.beginRally();
       }, true)]);
     } else {
-      this.setPhase(`Punkt: ${winnerName}`, `${r.reason}.`);
+      this.setPhase(`Punkt: ${this.nameOf(winner)}`, `${reason}.`);
       this.renderControls(() => [this.button('Następna wymiana', () => this.beginRally(), true)]);
     }
   }
 
-  private grantXp(side: Side, o: ShotOutcome, m: MatchState): void {
+  /** `outright`: the winner's own shot was not reached. */
+  private grantXp(side: Side, outright: boolean, m: MatchState): void {
     let xp = XP.rally;
-    if (o.striker === side && o.result.kind === 'point' && o.result.reason.startsWith('Rywal nie dobiegł')) xp += XP.winner;
+    if (outright) xp += XP.winner;
     if (m.gameWinner === side) xp += XP.game;
     if (m.matchWinner === side) xp += XP.match;
     const { progress, levelsGained } = addXp(this.profiles[side].progress, xp);
@@ -290,11 +395,12 @@ export class Game {
       this.shotKind = null;
       this.syncShotButtons();
       this.preview();
-    } else if (this.phase === 'move') {
+    } else if (this.phase === 'move' || this.phase === 'clear') {
       const hit = this.view.pick(x, y, ['floor']);
       if (!hit) return;
       this.moveTo = { x: hit.p.x, z: hit.p.z };
       this.view.showMove(this.moveTo);
+      if (this.phase === 'clear') this.syncClearButton();
     }
   }
 
@@ -307,9 +413,10 @@ export class Game {
       this.shotKind = null;
       this.syncShotButtons();
       this.preview();
-    } else if (this.phase === 'move') {
+    } else if (this.phase === 'move' || this.phase === 'clear') {
       this.moveTo = { x: this.moveTo.x + d[0] * 0.2, z: this.moveTo.z - d[1] * 0.2 };
       this.view.showMove(this.moveTo);
+      if (this.phase === 'clear') this.syncClearButton();
     } else return;
     e.preventDefault();
   }
@@ -374,6 +481,27 @@ export class Game {
       warn.setAttribute('role', 'status');
       c.append(group, power, info, warn, this.button('Dalej: gdzie wracasz?', () => this.enterMove(), true));
       this.syncShotButtons();
+    } else if (this.phase === 'clear') {
+      const note = document.createElement('p');
+      note.id = 'clear-note';
+      note.setAttribute('role', 'status');
+      const go = this.button('Zejdź tutaj', () => this.runClear(this.moveTo), true);
+      go.id = 'clear-go';
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.append(
+        this.button('Najbliższe wolne miejsce', () => {
+          this.moveTo = clearSpot(this.pending!.from, this.pending!.ic);
+          this.view.showMove(this.moveTo);
+          this.syncClearButton();
+        }),
+        this.button('Zostań (stroke dla rywala)', () => {
+          const p = this.pending!;
+          this.pending = null;
+          this.finishRally(other(p.side), `Stroke: ${this.nameOf(p.side)} nie zszedł z drogi`, false);
+        }),
+      );
+      c.append(note, go, row);
     } else if (this.phase === 'move') {
       const row = document.createElement('div');
       row.className = 'row';

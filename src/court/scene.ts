@@ -6,6 +6,7 @@ import type { Vec2 } from '../engine/rally';
 import type { Side } from '../engine/rules';
 import type { Target } from '../engine/shots';
 import { Figure, type Outfit } from './figure';
+import { LINE_HALF_WIDTH, SWING_ROOM } from '../engine/clearance';
 
 export type PickSurface = 'front' | 'left' | 'right' | 'floor';
 export interface Pick { surface: PickSurface; p: Vec3 }
@@ -61,6 +62,8 @@ export class CourtView {
   private aimSpread: THREE.Mesh;
   private moveMarker: THREE.Mesh;
   private path: THREE.Line;
+  private zone = new THREE.Group();
+  private zoneLine: THREE.Mesh;
   private onFrame: ((now: number) => void) | null = null;
 
   constructor(private host: HTMLElement) {
@@ -119,6 +122,17 @@ export class CourtView {
     );
     this.path.visible = false;
     this.scene.add(this.path);
+
+    const red = (opacity: number) => new THREE.MeshBasicMaterial({ color: LINE, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+    const swingFill = new THREE.Mesh(new THREE.CircleGeometry(SWING_ROOM, 48), red(0.16));
+    const swingRing = new THREE.Mesh(new THREE.RingGeometry(SWING_ROOM - 0.05, SWING_ROOM, 48), red(0.8));
+    swingFill.name = 'swing';
+    swingRing.name = 'swing-ring';
+    this.zoneLine = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), red(0.16));
+    for (const m of [swingFill, swingRing, this.zoneLine]) m.rotation.x = -Math.PI / 2;
+    this.zone.add(swingFill, swingRing, this.zoneLine);
+    this.zone.visible = false;
+    this.scene.add(this.zone);
 
     new ResizeObserver(() => this.resize()).observe(host);
     this.resize();
@@ -293,6 +307,16 @@ export class CourtView {
       this.aim.rotation.set(0, left ? Math.PI / 2 : -Math.PI / 2, 0);
     }
     this.aimSpread.scale.setScalar(Math.max(spread, 0.06));
+  }
+
+  /** Red floor zones the previous striker must leave: swing room and the line to the front wall. */
+  showZone(stand: Vec2 | null, ball?: Vec3): void {
+    this.zone.visible = !!stand;
+    if (!stand || !ball) return;
+    for (const name of ['swing', 'swing-ring']) this.zone.getObjectByName(name)!.position.set(stand.x, 0.014, stand.z);
+    const len = Math.max(ball.z - 0.3, 0.1);
+    this.zoneLine.scale.set(LINE_HALF_WIDTH * 2, len, 1);
+    this.zoneLine.position.set(ball.x, 0.013, len / 2);
   }
 
   showMove(p: Vec2 | null, color?: string): void {

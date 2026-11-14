@@ -13,12 +13,14 @@ export interface Difficulty {
   noise: number;
   /** Monte Carlo samples per option: how well the CPU knows its own error. */
   samples: number;
+  /** Chance the CPU fails to clear the player's swing or line (a stroke for the player). */
+  clearFail: number;
 }
 
 export const DIFFICULTIES: Difficulty[] = [
-  { id: 'easy', label: 'Początkujący', level: 2, noise: 0.7, samples: 1 },
-  { id: 'club', label: 'Klubowy', level: 5, noise: 0.3, samples: 3 },
-  { id: 'pro', label: 'Turniejowy', level: 8, noise: 0.08, samples: 5 },
+  { id: 'easy', label: 'Początkujący', level: 2, noise: 0.7, samples: 1, clearFail: 0.3 },
+  { id: 'club', label: 'Klubowy', level: 5, noise: 0.3, samples: 3, clearFail: 0.12 },
+  { id: 'pro', label: 'Turniejowy', level: 8, noise: 0.08, samples: 5, clearFail: 0.04 },
 ];
 
 export interface CpuDecision {

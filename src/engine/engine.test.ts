@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COURT } from '../court/dimensions';
+import { blocking, clearSpot } from './clearance';
 import { simulate } from './physics';
 import { checkShot } from './rally';
 import { awardRally, newMatch, startNextGame, type MatchState, type Side } from './rules';
@@ -85,5 +86,25 @@ describe('shot rules', () => {
   it('a serve below the service line is a fault', () => {
     const f = flightFor(serveContact('right'), { target: { surface: 'front', u: 2, v: 1.2 }, power: 0.6 });
     expect(checkShot(f, 'right').fault).toBe('serve-low');
+  });
+});
+
+describe('clearing the opponent', () => {
+  const ic = { t: 1, ball: { x: 1.2, y: 0.6, z: 8 }, stand: { x: 1.6, z: 8.3 }, pressure: 0 };
+
+  it('blocks the swing and the straight line to the front wall', () => {
+    expect(blocking({ x: 2, z: 8.6 }, ic)).toBe('swing');
+    expect(blocking({ x: 1.3, z: 5 }, ic)).toBe('line');
+    expect(blocking({ x: 3.2, z: 5.8 }, ic)).toBeNull();
+  });
+
+  it('suggested spot is out of both zones and inside the court', () => {
+    for (const from of [{ x: 2, z: 8.6 }, { x: 1.3, z: 5 }, { x: 0.5, z: 9.4 }]) {
+      const s = clearSpot(from, ic);
+      expect(blocking(s, ic)).toBeNull();
+      expect(s.x).toBeGreaterThan(0);
+      expect(s.x).toBeLessThan(COURT.width);
+      expect(s.z).toBeLessThan(COURT.length);
+    }
   });
 });

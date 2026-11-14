@@ -1,7 +1,7 @@
 import { COURT } from '../court/dimensions';
 import type { Flight, Vec3 } from './physics';
 import {
-  REACTION, RECOVERY, checkInterference, checkShot, findIntercept, positionAt,
+  REACTION, RECOVERY, ballHitsBody, checkShot, findIntercept, positionAt,
   type Fault, type Intercept, type Move, type ShotCheck, type Vec2,
 } from './rally';
 import { other, type Box, type Side } from './rules';
@@ -73,18 +73,14 @@ export function playShot(opts: {
   }
 
   const intercept = findIntercept(flight, check, receiver);
-  const interference = serveBox ? null : checkInterference(flight, check, receiver, intercept, strikerMove);
-  if (interference) {
-    const t = intercept?.t ?? check.frontAt;
-    const receiverMove = intercept ? chase(receiver, intercept) : receiver;
-    if (interference.kind === 'let') {
-      return { ...base, receiverMove, result: { kind: 'let', reason: 'Let: zawodnicy sobie przeszkodzili, wymiana powtórzona' }, duration: t + 0.4 };
+  const hitBody = serveBox ? null : ballHitsBody(flight, check, receiver);
+  if (hitBody) {
+    const t = check.frontAt;
+    if (hitBody === 'let') {
+      return { ...base, receiverMove: receiver, result: { kind: 'let', reason: 'Let: piłka po ścianie bocznej trafiła rywala' }, duration: t + 0.4 };
     }
-    const winner = interference.to === 'striker' ? striker.side : receiverSide;
-    const reason = interference.to === 'striker'
-      ? 'Stroke: piłka trafiła rywala w drodze prosto na ścianę frontową'
-      : 'Stroke: zawodnik nie zszedł z drogi do piłki';
-    return { ...base, receiverMove, result: { kind: 'point', winner, reason }, duration: t + 0.4 };
+    const reason = 'Stroke: piłka trafiła rywala w drodze prosto na ścianę frontową';
+    return { ...base, receiverMove: receiver, result: { kind: 'point', winner: striker.side, reason }, duration: t + 0.4 };
   }
 
   if (!intercept) {

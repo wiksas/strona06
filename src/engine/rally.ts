@@ -131,37 +131,20 @@ function clampToCourt(p: Vec2): Vec2 {
   };
 }
 
-export type Interference = { kind: 'let' } | { kind: 'stroke'; to: 'striker' | 'receiver' };
-
 /**
- * Simplified WSF interference:
- * - ball strikes the non-striker on its way to the front wall: stroke to the striker if
- *   it was travelling straight to the front wall, otherwise a let;
- * - the previous striker stands where the receiver must play: stroke to the receiver if
- *   that was the spot they chose to move to (did not clear), let if they were still clearing.
+ * Ball strikes the non-striker on its way to the front wall: stroke to the striker if it
+ * was travelling straight to the front wall, otherwise a let. Blocking the next striker is
+ * handled by the clearance module once the receiver reaches the ball.
  */
-export function checkInterference(
-  f: Flight,
-  check: ShotCheck,
-  receiver: Move,
-  intercept: Intercept | null,
-  striker: Move,
-): Interference | null {
+export function ballHitsBody(f: Flight, check: ShotCheck, receiver: Move): 'stroke' | 'let' | null {
   const firstWall = f.contacts[0];
   const end = Math.min(check.frontAt, f.end);
   for (let t = 0.06; t < end; t += SAMPLE_DT * 2) {
     const b = sampleAt(f, t);
     const body = positionAt(receiver, Math.min(t, REACTION));
     if (b.y < 1.85 && Math.hypot(b.x - body.x, b.z - body.z) < BODY) {
-      const direct = firstWall?.surface === 'front' && firstWall.t >= t;
-      return direct ? { kind: 'stroke', to: 'striker' } : { kind: 'let' };
+      return firstWall?.surface === 'front' && firstWall.t >= t ? 'stroke' : 'let';
     }
-  }
-  if (!intercept) return null;
-  const s = positionAt(striker, intercept.t);
-  if (Math.hypot(s.x - intercept.stand.x, s.z - intercept.stand.z) < BODY * 1.8) {
-    const chose = Math.hypot(striker.to.x - intercept.stand.x, striker.to.z - intercept.stand.z) < BODY * 1.8;
-    return chose ? { kind: 'stroke', to: 'receiver' } : { kind: 'let' };
   }
   return null;
 }
