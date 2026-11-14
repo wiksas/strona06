@@ -4,7 +4,7 @@ import {
   REACTION, RECOVERY, checkInterference, checkShot, findIntercept, positionAt,
   type Fault, type Intercept, type Move, type ShotCheck, type Vec2,
 } from './rally';
-import type { Box, Side } from './rules';
+import { other, type Box, type Side } from './rules';
 import { executeShot, type ShotInput } from './shots';
 
 export interface Striker {
@@ -56,7 +56,7 @@ export function playShot(opts: {
   rand: () => number;
 }): ShotOutcome {
   const { striker, shot, moveTo, receiver, serveBox, rand } = opts;
-  const receiverSide: Side = striker.side === 'player' ? 'cpu' : 'player';
+  const receiverSide = other(striker.side);
   const { input, flight } = executeShot(striker.contact, shot, striker.level, striker.pressure, rand);
   const check = checkShot(flight, serveBox);
   const strikerMove: Move = { from: striker.stand, to: clampStand(moveTo), delay: RECOVERY };

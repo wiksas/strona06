@@ -13,40 +13,40 @@ function play(s: MatchState, winners: Side[]): MatchState {
 
 describe('PAR-11 scoring', () => {
   it('server keeps serve and switches box after winning a rally', () => {
-    const s = awardRally(newMatch(2, 'player'), 'player');
-    expect(s.score.player).toBe(1);
-    expect(s.server).toBe('player');
+    const s = awardRally(newMatch(2, 'p1'), 'p1');
+    expect(s.score.p1).toBe(1);
+    expect(s.server).toBe('p1');
     expect(s.box).toBe('left');
     expect(s.newHand).toBe(false);
   });
 
   it('receiver scores and takes the serve', () => {
-    const s = awardRally(newMatch(2, 'player'), 'cpu');
-    expect(s.score.cpu).toBe(1);
-    expect(s.server).toBe('cpu');
+    const s = awardRally(newMatch(2, 'p1'), 'p2');
+    expect(s.score.p2).toBe(1);
+    expect(s.server).toBe('p2');
     expect(s.newHand).toBe(true);
   });
 
   it('needs a two-point lead after 10:10', () => {
-    let s = play(newMatch(2, 'player'), [...Array(10).fill('player'), ...Array(10).fill('cpu')]);
-    s = awardRally(s, 'player');
+    let s = play(newMatch(2, 'p1'), [...Array(10).fill('p1'), ...Array(10).fill('p2')]);
+    s = awardRally(s, 'p1');
     expect(s.gameWinner).toBeNull();
-    s = awardRally(s, 'cpu');
-    s = awardRally(s, 'cpu');
-    expect(s.score).toEqual({ player: 11, cpu: 12 });
+    s = awardRally(s, 'p2');
+    s = awardRally(s, 'p2');
+    expect(s.score).toEqual({ p1: 11, p2: 12 });
     expect(s.gameWinner).toBeNull();
-    s = awardRally(s, 'cpu');
-    expect(s.gameWinner).toBe('cpu');
-    expect(s.games.cpu).toBe(1);
+    s = awardRally(s, 'p2');
+    expect(s.gameWinner).toBe('p2');
+    expect(s.games.p2).toBe(1);
   });
 
   it('game winner serves first in the next game and the match ends at the target', () => {
-    let s = play(newMatch(1, 'cpu'), Array(11).fill('player'));
-    expect(s.matchWinner).toBe('player');
-    s = play(newMatch(2, 'cpu'), Array(11).fill('player'));
+    let s = play(newMatch(1, 'p2'), Array(11).fill('p1'));
+    expect(s.matchWinner).toBe('p1');
+    s = play(newMatch(2, 'p2'), Array(11).fill('p1'));
     s = startNextGame(s);
-    expect(s.score).toEqual({ player: 0, cpu: 0 });
-    expect(s.server).toBe('player');
+    expect(s.score).toEqual({ p1: 0, p2: 0 });
+    expect(s.server).toBe('p1');
     expect(s.matchWinner).toBeNull();
   });
 });

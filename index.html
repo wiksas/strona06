@@ -16,20 +16,27 @@
       <span>Skłosz</span>
     </a>
     <div class="board" aria-live="polite" id="board">
-      <div class="board-side" data-side="player">
-        <span class="who">Ty</span>
-        <span class="games" title="Wygrane gemy" id="games-player">0</span>
-        <strong class="pts" id="score-player">0</strong>
+      <div class="board-side" data-side="p1">
+        <svg class="turn-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#1b1f24"/><circle cx="5.6" cy="6.4" r="1.6" fill="#f5c400"/><circle cx="9.6" cy="5.4" r="1.6" fill="#f5c400"/></svg>
+        <span class="swatch" aria-hidden="true"></span>
+        <span class="who" id="name-p1">Gracz 1</span>
+        <span class="serve">serw.</span>
+        <span class="games" title="Wygrane gemy" id="games-p1">0</span>
+        <strong class="pts" id="score-p1">0</strong>
       </div>
       <span class="board-sep" aria-hidden="true">:</span>
-      <div class="board-side" data-side="cpu">
-        <strong class="pts" id="score-cpu">0</strong>
-        <span class="games" title="Wygrane gemy" id="games-cpu">0</span>
-        <span class="who">CPU</span>
+      <div class="board-side" data-side="p2">
+        <strong class="pts" id="score-p2">0</strong>
+        <span class="games" title="Wygrane gemy" id="games-p2">0</span>
+        <span class="serve">serw.</span>
+        <span class="who" id="name-p2">CPU</span>
+        <span class="swatch" aria-hidden="true"></span>
+        <svg class="turn-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#1b1f24"/><circle cx="5.6" cy="6.4" r="1.6" fill="#f5c400"/><circle cx="9.6" cy="5.4" r="1.6" fill="#f5c400"/></svg>
       </div>
     </div>
     <nav class="top-actions" aria-label="Menu gry">
       <button type="button" id="open-rules">Zasady</button>
+      <button type="button" id="open-players">Gracze</button>
       <button type="button" id="open-menu">Nowy mecz</button>
     </nav>
   </header>
@@ -47,12 +54,13 @@
       </div>
     </section>
 
-    <aside class="panel" aria-label="Twoja decyzja">
+    <aside class="panel" aria-label="Decyzja gracza">
       <div class="level">
-        <div class="level-row"><span>Twój poziom <strong id="level">1</strong></span><span id="xp-text">0 / 80 XP</span></div>
+        <div class="level-row"><span><span id="level-name">Gracz 1</span>: poziom <strong id="level">1</strong></span><span id="xp-text">0 / 80 XP</span></div>
         <progress id="xp" max="80" value="0">0</progress>
         <p class="note" id="storage-note" hidden>Przeglądarka blokuje zapis: postęp zniknie po zamknięciu karty.</p>
       </div>
+      <p class="turn" id="turn" role="status" hidden><span class="swatch" aria-hidden="true"></span>Tura: <strong id="turn-name"></strong></p>
       <h1 class="phase" id="phase-title">Skłosz</h1>
       <p class="hint" id="phase-hint">Wybierz format meczu, aby zacząć.</p>
       <div id="controls" class="controls"></div>
@@ -64,13 +72,18 @@
     <form method="dialog" id="menu-form">
       <h2 id="menu-title">Nowy mecz</h2>
       <fieldset>
+        <legend>Tryb</legend>
+        <label><input type="radio" name="mode" value="cpu" checked> Przeciwko komputerowi</label>
+        <label><input type="radio" name="mode" value="hotseat"> 1v1 na jednym urządzeniu (na zmianę)</label>
+      </fieldset>
+      <fieldset>
         <legend>Format</legend>
         <label><input type="radio" name="games" value="1"> Jeden gem do 11</label>
         <label><input type="radio" name="games" value="2" checked> Do 2 wygranych gemów</label>
         <label><input type="radio" name="games" value="3"> Do 3 wygranych gemów</label>
       </fieldset>
-      <fieldset>
-        <legend>Przeciwnik</legend>
+      <fieldset id="cpu-level">
+        <legend>Komputer</legend>
         <label><input type="radio" name="cpu" value="easy"> Początkujący: często wraca w złe miejsce</label>
         <label><input type="radio" name="cpu" value="club" checked> Klubowy: gra pewnie, czasem się myli</label>
         <label><input type="radio" name="cpu" value="pro"> Turniejowy: wraca na T i szuka rogów</label>
@@ -78,6 +91,18 @@
       <div class="dialog-actions">
         <button type="button" value="cancel" id="menu-cancel">Anuluj</button>
         <button type="submit" class="primary" value="start">Zagraj mecz</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="players" aria-labelledby="players-title">
+    <form method="dialog" id="players-form">
+      <h2 id="players-title">Gracze</h2>
+      <p class="hint">Gracz 2 występuje w meczach 1v1. Kolor koszulki komputera (grafitowy) jest zarezerwowany.</p>
+      <div id="players-fields" class="players-fields"></div>
+      <div class="dialog-actions">
+        <button type="button" id="players-cancel">Anuluj</button>
+        <button type="submit" class="primary" value="save">Zapisz graczy</button>
       </div>
     </form>
   </dialog>
@@ -109,7 +134,7 @@
       </ul>
       <h3>Twoja postać</h3>
       <ul>
-        <li>Żółte koło na ścianie pokazuje rozrzut uderzenia. Rośnie, gdy dobiegasz do piłki w ostatniej chwili, przy ścianie albo nisko.</li>
+        <li>Żółte koło na ścianie pokazuje rozrzut: trafia w nie mniej więcej 2 z 3 uderzeń. Koło rośnie, gdy dobiegasz do piłki w ostatniej chwili, przy ścianie albo nisko.</li>
         <li>Punkty doświadczenia za wygrane wymiany i gemy podnoszą poziom. Wyższy poziom to mniejszy rozrzut kierunku i siły.</li>
       </ul>
     </div>

@@ -75,13 +75,29 @@ button[aria-pressed='true'] { background: var(--ink); color: var(--surface); }
 }
 .board-side { display: flex; align-items: center; gap: 0.5rem; }
 .board-side .who { font-weight: 600; font-size: 1.05rem; }
-.board-side[data-serving] .who::after {
-  content: ' serw.';
-  font-weight: 600;
-  color: var(--blue);
+.serve { display: none; font-weight: 600; color: var(--blue); }
+.board-side[data-serving] .serve { display: inline; }
+.board-side .swatch,
+.turn .swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 3px;
+  background: var(--shirt, var(--blue));
+  border: 1.5px solid var(--ink);
+  flex: none;
 }
-.board-side[data-side='cpu'][data-serving] .who::after { content: none; }
-.board-side[data-side='cpu'][data-serving] .who::before { content: 'serw. '; color: var(--blue); }
+.who { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Ball icon marks whose decision it is; kept in layout so the score does not jump. */
+.turn-icon { visibility: hidden; flex: none; }
+.board-side[data-turn] .turn-icon { visibility: visible; }
+.turn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-weight: 600;
+}
+.turn[hidden] { display: none; }
 .pts { font-size: 2.1rem; font-weight: 700; min-width: 2ch; text-align: center; line-height: 1; }
 .games {
   font-size: 1rem;
@@ -222,4 +238,47 @@ input[type='radio'] { width: 1.15rem; height: 1.15rem; accent-color: var(--blue)
 
 @media (prefers-reduced-motion: reduce) {
   button:active { transform: none; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+fieldset:disabled { opacity: 0.55; }
+fieldset:disabled label { cursor: not-allowed; }
+.players-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.9rem; }
+.player-card h3 { margin: 0 0 0.5rem; }
+.muted { color: var(--muted); font-weight: 400; font-size: 0.9rem; }
+.text-field { display: grid; gap: 0.25rem; font-weight: 600; margin-bottom: 0.6rem; }
+.text-field input {
+  font: inherit;
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--ink);
+}
+.swatches { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.swatches legend { width: 100%; }
+.swatch-option { position: relative; display: inline-flex; min-height: 44px; min-width: 44px; align-items: center; justify-content: center; }
+.swatch-option input { position: absolute; opacity: 0; inset: 0; margin: 0; width: 100%; height: 100%; }
+.swatch-option .chip {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--c);
+  border: 1.5px solid var(--line);
+}
+.swatch-option:hover .chip { border-color: var(--ink); }
+.swatch-option input:checked + .chip { border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
+.swatch-option input:focus-visible + .chip { outline: 3px solid var(--blue); outline-offset: 2px; }
+.swatch-option input:disabled { cursor: not-allowed; }
+.swatch-option input:disabled + .chip {
+  opacity: 0.35;
+  background-image: linear-gradient(135deg, transparent 45%, var(--ink) 45%, var(--ink) 55%, transparent 55%);
 }

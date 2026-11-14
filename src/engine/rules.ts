@@ -1,4 +1,4 @@
-export type Side = 'player' | 'cpu';
+export type Side = 'p1' | 'p2';
 export type Box = 'left' | 'right';
 
 export interface MatchState {
@@ -14,12 +14,12 @@ export interface MatchState {
   matchWinner: Side | null;
 }
 
-export const other = (s: Side): Side => (s === 'player' ? 'cpu' : 'player');
+export const other = (s: Side): Side => (s === 'p1' ? 'p2' : 'p1');
 
 export function newMatch(gamesToWin: number, firstServer: Side): MatchState {
   return {
-    score: { player: 0, cpu: 0 },
-    games: { player: 0, cpu: 0 },
+    score: { p1: 0, p2: 0 },
+    games: { p1: 0, p2: 0 },
     gamesToWin,
     server: firstServer,
     box: 'right',
@@ -58,7 +58,7 @@ export function startNextGame(s: MatchState): MatchState {
   if (!s.gameWinner || s.matchWinner) return s;
   return {
     ...s,
-    score: { player: 0, cpu: 0 },
+    score: { p1: 0, p2: 0 },
     server: s.gameWinner,
     newHand: true,
     gameWinner: null,

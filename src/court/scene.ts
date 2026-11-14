@@ -5,13 +5,14 @@ import type { Vec3 } from '../engine/physics';
 import type { Vec2 } from '../engine/rally';
 import type { Side } from '../engine/rules';
 import type { Target } from '../engine/shots';
+import { Figure, type Outfit } from './figure';
 
 export type PickSurface = 'front' | 'left' | 'right' | 'floor';
 export interface Pick { surface: PickSurface; p: Vec3 }
 
 const { width: W, length: L } = COURT;
 const LINE = '#c8102e';
-const COLORS: Record<Side, string> = { player: '#1f5fa8', cpu: '#2b2d31' };
+const DEFAULT_OUTFIT: Outfit = { shirt: '#1f5fa8', shorts: '#f4f1ea' };
 export const VIEWS = {
   back: { pos: [W / 2, 3.6, L + 4.6], target: [W / 2, 1.3, L * 0.45] },
   top: { pos: [W / 2, 16, L / 2 + 0.01], target: [W / 2, 0, L / 2] },
@@ -54,7 +55,7 @@ export class CourtView {
   private ray = new THREE.Raycaster();
   private pickables: THREE.Mesh[] = [];
   private fadeWalls: { mesh: THREE.Mesh; normal: THREE.Vector3; point: THREE.Vector3 }[] = [];
-  private players = {} as Record<Side, THREE.Group>;
+  private players = {} as Record<Side, Figure>;
   private ball: THREE.Group;
   private aim: THREE.Group;
   private aimSpread: THREE.Mesh;
@@ -86,8 +87,10 @@ export class CourtView {
     this.scene.add(sun);
 
     this.buildCourt();
-    this.players.player = this.buildPlayer(COLORS.player);
-    this.players.cpu = this.buildPlayer(COLORS.cpu);
+    for (const side of ['p1', 'p2'] as const) {
+      this.players[side] = new Figure(DEFAULT_OUTFIT);
+      this.scene.add(this.players[side].root);
+    }
     this.ball = this.buildBall();
 
     this.aim = new THREE.Group();
@@ -104,7 +107,7 @@ export class CourtView {
 
     this.moveMarker = new THREE.Mesh(
       new THREE.RingGeometry(0.22, 0.3, 40),
-      new THREE.MeshBasicMaterial({ color: COLORS.player }),
+      new THREE.MeshBasicMaterial({ color: DEFAULT_OUTFIT.shirt }),
     );
     this.moveMarker.rotation.x = -Math.PI / 2;
     this.moveMarker.visible = false;
@@ -235,33 +238,6 @@ export class CourtView {
     }
   }
 
-  private buildPlayer(color: string): THREE.Group {
-    const g = new THREE.Group();
-    const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-    const skin = new THREE.MeshStandardMaterial({ color: '#d9a679', roughness: 0.8 });
-    const shorts = new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.8 });
-    const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.8, 16), skin);
-    legs.position.y = 0.4;
-    const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.19, 0.25, 16), shorts);
-    hips.position.y = 0.9;
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.21, 0.42, 6, 16), shirt);
-    torso.position.y = 1.25;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 16), skin);
-    head.position.y = 1.72;
-    const racket = new THREE.Group();
-    const frame = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.012, 8, 24), new THREE.MeshStandardMaterial({ color: '#1b1f24' }));
-    frame.scale.y = 1.3;
-    frame.position.y = 0.45;
-    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.32), new THREE.MeshStandardMaterial({ color: '#1b1f24' }));
-    handle.position.y = 0.17;
-    racket.add(frame, handle);
-    racket.position.set(0.32, 1.05, 0);
-    racket.rotation.z = -0.5;
-    g.add(legs, hips, torso, head, racket);
-    this.scene.add(g);
-    return g;
-  }
-
   /** Ball drawn at ~2.5x real size; the real 40 mm ball is invisible from behind the court. */
   private buildBall(): THREE.Group {
     const g = new THREE.Group();
@@ -285,11 +261,23 @@ export class CourtView {
     }
   }
 
-  setPlayer(side: Side, p: Vec2, faceToward?: Vec2): void {
-    const g = this.players[side];
-    g.position.set(p.x, 0, p.z);
-    const f = faceToward ?? { x: p.x, z: 0 };
-    g.rotation.y = Math.atan2(f.x - p.x, f.z - p.z) + Math.PI;
+  /** `dt` seconds since the last placement drives the run cycle; 0 for a jump cut. */
+  setPlayer(side: Side, p: Vec2, faceToward: Vec2 | null, dt: number): void {
+    this.players[side].place(p, faceToward ?? { x: p.x, z: 0 }, dt);
+  }
+
+  setOutfit(side: Side, outfit: Outfit): void {
+    this.players[side].setOutfit(outfit);
+  }
+
+  /** Yellow marker above the player who decides now; null hides both. */
+  setActive(side: Side | null): void {
+    this.players.p1.setActive(side === 'p1');
+    this.players.p2.setActive(side === 'p2');
+  }
+
+  swing(side: Side): void {
+    this.players[side].swing();
   }
 
   showAim(target: Target | null, spread: number): void {
@@ -307,8 +295,9 @@ export class CourtView {
     this.aimSpread.scale.setScalar(Math.max(spread, 0.06));
   }
 
-  showMove(p: Vec2 | null): void {
+  showMove(p: Vec2 | null, color?: string): void {
     this.moveMarker.visible = !!p;
+    if (color) (this.moveMarker.material as THREE.MeshBasicMaterial).color.set(color);
     if (p) this.moveMarker.position.set(p.x, 0.012, p.z);
   }
 
